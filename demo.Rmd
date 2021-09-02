@@ -1,0 +1,136 @@
+---
+title: "Network Visualization of Highschooler Social"
+output: html_notebook
+---
+
+```{r}
+library('visNetwork')
+```
+#setwd("D:/1")
+
+```{r}
+nodes <- read.csv("data/Highschooler.csv", header=T, as.is=T)
+friends <- read.csv("data/Friend.csv", header=T, as.is=T)
+```
+
+```{r}
+nodes$title <- paste0(nodes$school,nodes$hobby)
+nodes$label <- nodes$id
+visNetwork(nodes, friends)
+
+nodes$hobby<- as.factor(nodes$hobby)
+nodes$color.background <- c("orange", "pink", "yellow", "lightblue")[nodes$hobby]
+visNetwork(nodes, friends)
+
+visNetwork(nodes, friends)  %>% visLegend()
+ledges <- data.frame(color = unique(nodes$color.background), 
+                    label = unique(c("Archery","Basketball","Drawing","Fencing"))) 
+
+visNetwork(nodes, friends) %>%
+  visOptions(selectedBy = "hobby")%>%
+    visOptions(selectedBy = "school")%>% 
+     visLegend(useGroups = F, addNodes = ledges) 
+```
+
+```{r}
+# 选定拥有合适好友数量的用户
+#uid <- 6
+# 输入ID
+uid<-readline(prompt = "please input id (recommand 6 or 15):")
+cat("id:",uid)
+```
+
+```{r}
+# 好友ID
+friends.connected <- unique(c(friends$to[friends$from == uid], 
+                              friends$from[friends$to == uid]))
+```
+
+```{r}
+# 所有二级好友
+friends.2nd <- c(friends$from[
+  (friends$to %in% friends.connected)], 
+  friends$to[
+    (friends$from %in% friends.connected)])
+```
+
+```{r}
+# 该用户本身也会被包含到二级好友中，需要剔除
+friends.2nd <- friends.2nd[friends.2nd!=uid]
+```
+
+```{r}
+# 按共同好友的数量（关联度）进行倒序排序
+friends.recommand1 <- sort(table(friends.2nd), dec = T)
+```
+
+#friends.recommand1
+
+```{r}
+# 该用户所在学校
+uschool<-unique(c(nodes$school [nodes$id  == uid]))
+```
+
+```{r}
+#与该用户在同一学校的人
+nodes.school<-unique(c(nodes$id[nodes$school == uschool]))
+nodes.school<- nodes.school[nodes.school!=uid]
+```
+
+```{r}
+#该用户的爱好群组
+uhobby<-unique(nodes$hobby [nodes$id  == uid])
+```
+
+```{r}
+#与该用户有同一爱好的人
+nodes.hobby<-unique(c(nodes$id[nodes$hobby == uhobby]))
+nodes.hobby<- nodes.hobby[nodes.hobby!=uid]
+```
+
+```{r}
+#与该用户在同一学校或有同一爱好的人
+bingji<-union(nodes.school,nodes.hobby)
+```
+
+```{r}
+#与该用户在同一学校或有同一爱好，又有共同好友的人
+jiaoji<-intersect(bingji,friends.2nd)
+```
+
+```{r}
+#与该用户在同一学校或有同一爱好，没有共同好友的人
+friends.0nd<-setdiff(bingji,jiaoji)
+```
+
+```{r}
+friends.recommand0 <- sort(table(friends.0nd), dec = T)
+for (i in 1:length(friends.recommand0))
+    friends.recommand0[i] <- 0
+```
+
+#friends.recommand0
+
+```{r}
+#可能认识里关联度不为0的人
+id<-names(friends.recommand1)
+correlation<-as.numeric(friends.recommand1)
+recommand1<-data.frame(id,correlation)
+```
+
+```{r}
+#可能认识里关联度为0的人
+id<-names(friends.recommand0)
+correlation<-as.numeric(friends.recommand0)
+recommand0<-data.frame(id,correlation)
+```
+
+```{r}
+#可能认识的人排序
+recommand<-rbind(recommand1,recommand0)
+```
+
+```{r}
+cat("The association ranking of recommended friends with ID ",uid," is as follows:")
+recommand
+```
